@@ -1,0 +1,43 @@
+Privacy Policy for Meowo
+Last updated: March 17, 2026
+Meowo (“we”, “us”, or “the bot”) is a fun, cat-themed Discord bot that helps communities track activity in a wholesome way. We take your privacy seriously even if we’re mostly made of catnip and meows.
+1. Information We Collect
+We only collect the absolute minimum needed to run the bot:
+
+Your Discord User ID (a number, never your username or tag unless you run /profile)
+Meow Level & XP you earn by chatting
+Meow Streak data (last day you sent “meow” and current streak length)
+Voice channel time (total minutes/hours spent in any voice channel — this is what powers the Unemployment tracker)
+Server ID where the commands are used (only for configuration like streak channel)
+
+We do not collect:
+
+Message content
+Voice chat audio
+IP addresses
+Any personal information (age, email, real name, etc.)
+
+2. How We Use Your Data
+
+To calculate and display your Meow Level, profile, leaderboard, streak, and unemployment stats
+To keep your daily streak alive (or sadly reset it)
+To show the server’s top meow-ers and top couch cats
+To let server admins manage the bot (e.g. set streak channel)
+
+3. Data Storage
+All data is stored securely on our servers for as long as your server has the bot. If the bot is removed from a server, your data for that server is automatically deleted within 30 days.
+4. Data Sharing
+We do not sell, rent, or share your data with any third parties.
+The only exception is Discord itself (we use the Discord API to read basic information like when you send “meow” or join a voice channel).
+5. Your Rights
+You can:
+
+Check all your data with /profile or /unemployment
+Ask any server admin to run a data deletion request
+Contact us directly (see below) to request complete deletion of your data across all servers
+
+6. Contact
+If you have any privacy questions, send a DM to the bot owner or email:
+meowo.privacy@gmail.com
+(We’ll reply within 48 hours, usually faster because we’re cats and we’re curious.)
+By using Meowo, you agree to this Privacy Policy.
