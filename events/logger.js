@@ -1,6 +1,14 @@
 const { giveXPWithCooldown } = require('../updates/levels');
 const { updateStreak, getGuildConfig } = require('../updates/streaks');
-const { EmbedBuilder } = require('discord.js');
+const {
+    ContainerBuilder,
+    SectionBuilder,
+    TextDisplayBuilder,
+    ThumbnailBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize,
+    MessageFlags,
+} = require('discord.js');
 
 module.exports = {
     name: 'messageCreate',
@@ -21,29 +29,55 @@ module.exports = {
             const currentStreak = result.streak;
             const streakMessage = result.message;
 
-            const embed = new EmbedBuilder()
-                .setColor('#FF69B4')
-                .setTitle(`🐱 Daily Meow from ${user.displayName}`)
-                .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
-                .setDescription(`${streakMessage}\n\n**Current Streak: ${currentStreak} day${currentStreak !== 1 ? 's' : ''}** 🔥`)
-                .addFields(
-                    { name: 'Keep it up!', value: 'Meow again tomorrow to extend your streak!', inline: false }
-                )
-                .setFooter({ text: 'Meow streaks reset if you miss a day 😿' })
-                .setTimestamp();
-
-            // Add special messages for milestones
+            let milestoneText = '';
             if (currentStreak === 1) {
-                embed.addFields({ name: '🎉', value: 'First meow of your streak!', inline: true });
+                milestoneText = '🎉 First meow of your streak!';
             } else if (currentStreak === 7) {
-                embed.addFields({ name: '🏆', value: 'One week streak! You\'re on fire!', inline: true });
+                milestoneText = '🏆 One week streak! You\'re on fire!';
             } else if (currentStreak === 30) {
-                embed.addFields({ name: '👑', value: 'One month! You\'re a meow master!', inline: true });
+                milestoneText = '👑 One month! You\'re a meow master!';
             } else if (currentStreak % 10 === 0) {
-                embed.addFields({ name: '⭐', value: `${currentStreak} days! Amazing dedication!`, inline: true });
+                milestoneText = `⭐ ${currentStreak} days! Amazing dedication!`;
             }
 
-            message.reply({ embeds: [embed] });
+            const container = new ContainerBuilder()
+                .setAccentColor(0xFFB6C1)
+                .addSectionComponents(
+                    new SectionBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`## 🐱 Daily Meow from ${user.displayName}`)
+                        )
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(
+                                `${streakMessage}\n\n**Current Streak:** ${currentStreak} day${currentStreak !== 1 ? 's' : ''} 🔥`
+                            )
+                        )
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder().setURL(user.displayAvatarURL({ dynamic: true, size: 256 }))
+                        )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('Keep it up! Meow again tomorrow to extend your streak!')
+                );
+
+            if (milestoneText) {
+                container.addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(milestoneText)
+                );
+            }
+
+            container
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`-# Meow streaks reset if you miss a day 😿\n-# ${new Date().toLocaleString()}`)
+                );
+
+            message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 });
         }
     },
 };
