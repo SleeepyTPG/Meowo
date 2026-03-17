@@ -1,11 +1,12 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, Collection, ActivityType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
@@ -66,6 +67,27 @@ loadEvents(path.join(__dirname, 'events'));
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+
+    // Calculate total human users across all guilds
+    let totalUsers = 0;
+    for (const guild of client.guilds.cache.values()) {
+        try {
+            const members = await guild.members.fetch();
+            totalUsers += members.filter(member => !member.user.bot).size;
+        } catch (error) {
+            console.error(`Error fetching members for guild ${guild.name}:`, error);
+        }
+    }
+
+    // Set bot presence to show user count
+    client.user.setPresence({
+        activities: [{
+            name: `🐱 Purring for ${totalUsers} cats! 🐾`,
+            type: ActivityType.Listening
+        }],
+        status: 'online'
+    });
+    console.log(`Set presence: Listening to "🐱 Purring for ${totalUsers} cats! 🐾"`);
 
     const commands = [];
     client.commands.forEach(command => {

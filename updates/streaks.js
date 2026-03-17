@@ -81,6 +81,17 @@ function getStreak(guildId, userId) {
     return getUserStreakData(guildId, userId).streak;
 }
 
+// Get top streaks
+function getTopStreaks(guildId, limit = 10) {
+    const data = loadStreaks();
+    if (!data[guildId] || !data[guildId].users) return [];
+
+    return Object.entries(data[guildId].users)
+        .sort(([, a], [, b]) => b.streak - a.streak)
+        .slice(0, limit)
+        .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
+}
+
 // Get config
 function getGuildConfig(guildId) {
     const data = loadStreaks();
