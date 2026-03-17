@@ -3,7 +3,6 @@ const path = require('path');
 
 const unemploymentPath = path.join(__dirname, 'unemployment.json');
 
-// Load unemployment data
 function loadUnemployment() {
     if (fs.existsSync(unemploymentPath)) {
         try {
@@ -16,7 +15,6 @@ function loadUnemployment() {
     return {};
 }
 
-// Save unemployment data
 function saveUnemployment(data) {
     try {
         fs.writeFileSync(unemploymentPath, JSON.stringify(data, null, 2));
@@ -25,7 +23,6 @@ function saveUnemployment(data) {
     }
 }
 
-// Get user data
 function getUserUnemploymentData(guildId, userId) {
     const data = loadUnemployment();
     if (!data[guildId]) data[guildId] = {};
@@ -33,7 +30,6 @@ function getUserUnemploymentData(guildId, userId) {
     return data[guildId][userId];
 }
 
-// Update user join time
 function setUserJoined(guildId, userId, timestamp) {
     const data = loadUnemployment();
     if (!data[guildId]) data[guildId] = {};
@@ -42,7 +38,6 @@ function setUserJoined(guildId, userId, timestamp) {
     saveUnemployment(data);
 }
 
-// Add time to user and check milestones
 function addTimeToUser(guildId, userId, timeMs) {
     const data = loadUnemployment();
     if (!data[guildId]) data[guildId] = {};
@@ -61,12 +56,10 @@ function addTimeToUser(guildId, userId, timeMs) {
     return { totalTime: data[guildId][userId].totalTime, newMilestones };
 }
 
-// Get total time
 function getTotalTime(guildId, userId) {
     return getUserUnemploymentData(guildId, userId).totalTime;
 }
 
-// Format time
 function formatTime(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -82,7 +75,6 @@ function formatTime(ms) {
     }
 }
 
-// Get top unemployed
 function getTopUnemployed(guildId, limit = 10) {
     const data = loadUnemployment();
     if (!data[guildId]) return [];

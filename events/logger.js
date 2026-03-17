@@ -5,17 +5,13 @@ const { EmbedBuilder } = require('discord.js');
 module.exports = {
     name: 'messageCreate',
     execute(message) {
-        // Ignore bot messages
         if (message.author.bot) return;
 
-        // Ignore messages not in a guild
         if (!message.guild) return;
 
-        // Give XP for messages (5-15 XP, 1 minute cooldown)
         const xpAmount = Math.floor(Math.random() * 11) + 5; // 5-15
         giveXPWithCooldown(message.guild.id, message.author.id, xpAmount, 60000);
 
-        // Check for meow streak in designated channel
         const config = getGuildConfig(message.guild.id);
         if (config.streakChannel && message.channel.id === config.streakChannel && message.content.toLowerCase().includes('meow')) {
             const user = message.author;

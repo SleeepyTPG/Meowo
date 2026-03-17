@@ -3,7 +3,6 @@ const path = require('path');
 
 const levelsPath = path.join(__dirname, 'levels.json');
 
-// Load levels data
 function loadLevels() {
     if (fs.existsSync(levelsPath)) {
         try {
@@ -16,7 +15,6 @@ function loadLevels() {
     return {};
 }
 
-// Save levels data
 function saveLevels(data) {
     try {
         fs.writeFileSync(levelsPath, JSON.stringify(data, null, 2));
@@ -25,7 +23,6 @@ function saveLevels(data) {
     }
 }
 
-// Get user data
 function getUserData(guildId, userId) {
     const data = loadLevels();
     if (!data[guildId]) data[guildId] = {};
@@ -33,7 +30,6 @@ function getUserData(guildId, userId) {
     return data[guildId][userId];
 }
 
-// Add XP to user
 function addXP(guildId, userId, amount) {
     const data = loadLevels();
     if (!data[guildId]) data[guildId] = {};
@@ -46,7 +42,6 @@ function addXP(guildId, userId, amount) {
     return data[guildId][userId];
 }
 
-// Give XP with cooldown
 function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
     const data = loadLevels();
     if (!data[guildId]) data[guildId] = {};
@@ -65,17 +60,14 @@ function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
     return data[guildId][userId];
 }
 
-// Get level from XP
 function getLevel(xp) {
     return Math.floor(xp / 1000);
 }
 
-// Get XP needed for next level
 function getXPForNextLevel(level) {
     return (level + 1) * 1000;
 }
 
-// Get rank of user in guild
 function getRank(guildId, userId) {
     const data = loadLevels();
     if (!data[guildId]) return null;
@@ -88,7 +80,6 @@ function getRank(guildId, userId) {
     return user ? user.rank : null;
 }
 
-// Get top users in guild
 function getTopUsers(guildId, limit = 10) {
     const data = loadLevels();
     if (!data[guildId]) return [];

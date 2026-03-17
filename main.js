@@ -36,7 +36,6 @@ function loadCommands(dir) {
     }
 }
 
-// Function to load events
 function loadEvents(dir) {
     const files = fs.readdirSync(dir, { withFileTypes: true });
     for (const file of files) {
@@ -68,7 +67,6 @@ loadEvents(path.join(__dirname, 'events'));
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
-    // Calculate total human users across all guilds
     let totalUsers = 0;
     for (const guild of client.guilds.cache.values()) {
         try {
@@ -79,7 +77,6 @@ client.once('ready', async () => {
         }
     }
 
-    // Set bot presence to show user count
     client.user.setPresence({
         activities: [{
             name: `🐱 Purring for ${totalUsers} cats! 🐾`,

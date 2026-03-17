@@ -3,7 +3,6 @@ const path = require('path');
 
 const streaksPath = path.join(__dirname, 'streaks.json');
 
-// Load streaks data
 function loadStreaks() {
     if (fs.existsSync(streaksPath)) {
         try {
@@ -16,7 +15,6 @@ function loadStreaks() {
     return {};
 }
 
-// Save streaks data
 function saveStreaks(data) {
     try {
         fs.writeFileSync(streaksPath, JSON.stringify(data, null, 2));
@@ -25,7 +23,6 @@ function saveStreaks(data) {
     }
 }
 
-// Get user data
 function getUserStreakData(guildId, userId) {
     const data = loadStreaks();
     if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
@@ -33,7 +30,6 @@ function getUserStreakData(guildId, userId) {
     return data[guildId].users[userId];
 }
 
-// Update streak for user
 function updateStreak(guildId, userId) {
     const data = loadStreaks();
     if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
@@ -46,7 +42,6 @@ function updateStreak(guildId, userId) {
     let message;
 
     if (!lastMeow) {
-        // First time
         newStreak = 1;
         message = "Welcome to your meow streak! 🐱";
     } else {
@@ -55,15 +50,12 @@ function updateStreak(guildId, userId) {
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         if (lastMeow === yesterdayStr) {
-            // Consecutive day
             newStreak = data[guildId].users[userId].streak + 1;
             message = `Streak increased! 🔥`;
         } else if (lastMeow === today) {
-            // Already did today
             newStreak = data[guildId].users[userId].streak;
             message = `You've already meowed today! Your streak is safe. 🐱`;
         } else {
-            // Missed days
             newStreak = 1;
             message = `Streak reset! 😿 Don't worry, start fresh today!`;
         }
@@ -76,12 +68,10 @@ function updateStreak(guildId, userId) {
     return { streak: newStreak, message };
 }
 
-// Get streak
 function getStreak(guildId, userId) {
     return getUserStreakData(guildId, userId).streak;
 }
 
-// Get top streaks
 function getTopStreaks(guildId, limit = 10) {
     const data = loadStreaks();
     if (!data[guildId] || !data[guildId].users) return [];
@@ -92,14 +82,12 @@ function getTopStreaks(guildId, limit = 10) {
         .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
 }
 
-// Get config
 function getGuildConfig(guildId) {
     const data = loadStreaks();
     if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
     return data[guildId].config;
 }
 
-// Set streak channel
 function setStreakChannel(guildId, channelId) {
     const data = loadStreaks();
     if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
