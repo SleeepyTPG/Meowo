@@ -37,9 +37,6 @@ module.exports = {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             )
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
-            )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('-# Miss a day and your streak resets 😿')
             );
