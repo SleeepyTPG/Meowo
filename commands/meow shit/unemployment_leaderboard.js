@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { getTopUnemployed, formatTime } = require('../../updates/unemployment');
 
 module.exports = {
@@ -14,26 +14,50 @@ module.exports = {
             return await interaction.reply({ content: 'No unemployment data yet! Start wasting time in voice channels! 🛋️', ephemeral: true });
         }
 
-        const embed = new EmbedBuilder()
-            .setColor('#FF69B4')
-            .setTitle('🐱 Unemployment Leaderboard')
-            .setDescription('Top members by total time spent being unproductive in voice channels')
-            .setFooter({ text: 'Who will claim the throne of laziness? 👑' })
-            .setTimestamp();
+        const medals = ['🥇', '🥈', '🥉'];
 
-        let description = '';
+        const container = new ContainerBuilder()
+            .setAccentColor(0xFFB6C1)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('## 🐱 Unemployment Leaderboard')
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('Top members by total time spent being unproductive in voice channels 🛋️')
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            );
+
         for (const user of topUsers) {
+            let name;
             try {
                 const member = await interaction.guild.members.fetch(user.id);
-                const name = member.displayName;
-                description += `**#${user.rank}** ${name} - ${formatTime(user.totalTime)}\n`;
+                name = member.displayName;
             } catch (error) {
-                description += `**#${user.rank}** Unknown User - ${formatTime(user.totalTime)}\n`;
+                name = 'Unknown User';
+            }
+            const prefix = medals[user.rank - 1] ?? `**#${user.rank}**`;
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`${prefix} ${name} — ${formatTime(user.totalTime)}`)
+            );
+            if (user.rank < topUsers.length) {
+                container.addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                );
             }
         }
 
-        embed.setDescription(description);
+        container
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('-# Who will claim the throne of laziness? 👑')
+            );
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+        });
     },
 };

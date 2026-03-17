@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, ThumbnailBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { getUserData, getXPForNextLevel } = require('../../updates/levels');
 
 function createProgressBar(current, max, length = 10) {
@@ -25,19 +25,40 @@ module.exports = {
         const progress = currentXP - (currentLevel * 1000);
         const progressMax = 1000;
 
-        const embed = new EmbedBuilder()
-            .setColor('#FF69B4')
-            .setTitle(`🐱 ${user.displayName}'s Meow Level`)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .addFields(
-                { name: 'Level', value: `${currentLevel}`, inline: true },
-                { name: 'XP', value: `${currentXP}`, inline: true },
-                { name: 'Next Level', value: `${xpNeeded} XP needed`, inline: true },
-                { name: 'Progress', value: `${createProgressBar(progress, progressMax)} ${progress}/${progressMax}`, inline: false }
+        const container = new ContainerBuilder()
+            .setAccentColor(0xFFB6C1)
+            .addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`## 🐱 ${user.displayName}'s Meow Level 😽`)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+                            `**Level:** ${currentLevel}\n**XP:** ${currentXP}\n**Next Level:** ${xpNeeded} XP needed`
+                        )
+                    )
+                    .setThumbnailAccessory(
+                        new ThumbnailBuilder().setURL(user.displayAvatarURL({ size: 256 }))
+                    )
             )
-            .setFooter({ text: 'Keep meowing to level up! 🐾' })
-            .setTimestamp();
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `${createProgressBar(progress, progressMax)} ${progress}/${progressMax}`
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('-# Keep meowing to level up! 🐾')
+            );
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+        });
     },
 };

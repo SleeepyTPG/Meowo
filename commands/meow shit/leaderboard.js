@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { getTopUsers } = require('../../updates/levels');
 
 module.exports = {
@@ -14,22 +14,45 @@ module.exports = {
             return await interaction.reply({ content: 'No meow levels yet! Start chatting to earn XP.', ephemeral: true });
         }
 
-        const embed = new EmbedBuilder()
-            .setColor('#FF69B4')
-            .setTitle('🐱 Meow Leaderboard')
-            .setDescription('Top members by meow level and XP')
-            .setFooter({ text: 'Keep meowing to climb the ranks! 🐾' })
-            .setTimestamp();
+        const medals = ['🥇', '🥈', '🥉'];
 
-        let description = '';
+        const container = new ContainerBuilder()
+            .setAccentColor(0xFFB6C1)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('## 🐱 Meow Leaderboard')
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('Top members by meow level and XP 💕')
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            );
+
         for (const user of topUsers) {
             const member = await interaction.guild.members.fetch(user.id).catch(() => null);
             const name = member ? member.displayName : 'Unknown User';
-            description += `**#${user.rank}** ${name} - Level ${user.level} (${user.xp} XP)\n`;
+            const prefix = medals[user.rank - 1] ?? `**#${user.rank}**`;
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`${prefix} ${name} — Level ${user.level} (${user.xp} XP)`)
+            );
+            if (user.rank < topUsers.length) {
+                container.addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
+                );
+            }
         }
 
-        embed.setDescription(description);
+        container
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('-# Keep meowing to climb the ranks! 🐾')
+            );
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+        });
     },
 };

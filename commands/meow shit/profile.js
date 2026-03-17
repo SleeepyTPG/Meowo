@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, SectionBuilder, TextDisplayBuilder, SeparatorBuilder, ThumbnailBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { getUserData, getXPForNextLevel, getRank } = require('../../updates/levels');
 
 function createProgressBar(current, max, length = 10) {
@@ -30,20 +30,40 @@ module.exports = {
         const progressMax = 1000;
         const rank = getRank(guild.id, targetUser.id);
 
-        const embed = new EmbedBuilder()
-            .setColor('#FF69B4')
-            .setTitle(`🐱 ${targetUser.displayName}'s Meow Profile`)
-            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
-            .addFields(
-                { name: 'Level', value: `${currentLevel}`, inline: true },
-                { name: 'XP', value: `${currentXP}`, inline: true },
-                { name: 'Rank', value: rank ? `#${rank}` : 'Unranked', inline: true },
-                { name: 'Next Level', value: `${xpNeeded} XP needed`, inline: true },
-                { name: 'Progress', value: `${createProgressBar(progress, progressMax)} ${progress}/${progressMax}`, inline: false }
+        const container = new ContainerBuilder()
+            .setAccentColor(0xFFB6C1)
+            .addSectionComponents(
+                new SectionBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`## 🐱 ${targetUser.displayName}'s Meow Profile 💕`)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+                            `**Level:** ${currentLevel}\n**XP:** ${currentXP}\n**Rank:** ${rank ? `#${rank}` : 'Unranked'}\n**Next Level:** ${xpNeeded} XP needed`
+                        )
+                    )
+                    .setThumbnailAccessory(
+                        new ThumbnailBuilder().setURL(targetUser.displayAvatarURL({ size: 256 }))
+                    )
             )
-            .setFooter({ text: 'Meow levels are earned by being active in the server! 🐾' })
-            .setTimestamp();
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `${createProgressBar(progress, progressMax)} ${progress}/${progressMax}`
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('-# Meow levels are earned by being active in the server! 🐾')
+            );
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+        });
     },
 };
