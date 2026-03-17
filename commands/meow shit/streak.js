@@ -37,9 +37,6 @@ module.exports = {
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('Use `/meow` daily to keep your streak alive! 🔥')
-            )
             .addSeparatorComponents(
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             )
