@@ -23,6 +23,7 @@ Keep your server safe and clean with a full suite of moderation commands.
 | `/kick` | Kick a member from the server |
 | `/timeout` | Temporarily mute a member for a set duration |
 | `/lockdown` | Lock a channel to prevent members from sending messages |
+| `/unlock` | Unlock a channel and allow members to send messages again |
 | `/set-meow-channel {channel}` | Set the channel for meow streaks (Admin only) |
 
 ---
