@@ -3,6 +3,26 @@ const path = require('path');
 
 const streaksPath = path.join(__dirname, 'streaks.json');
 
+function ensureGuildData(data, guildId) {
+    if (!data[guildId] || typeof data[guildId] !== 'object') {
+        data[guildId] = {};
+    }
+    if (!data[guildId].config || typeof data[guildId].config !== 'object') {
+        data[guildId].config = { streakChannel: null };
+    }
+    if (!data[guildId].users || typeof data[guildId].users !== 'object') {
+        data[guildId].users = {};
+    }
+    return data[guildId];
+}
+
+function ensureUserData(guildData, userId) {
+    if (!guildData.users[userId] || typeof guildData.users[userId] !== 'object') {
+        guildData.users[userId] = { streak: 0, lastMeow: null };
+    }
+    return guildData.users[userId];
+}
+
 function loadStreaks() {
     if (fs.existsSync(streaksPath)) {
         try {
@@ -25,18 +45,17 @@ function saveStreaks(data) {
 
 function getUserStreakData(guildId, userId) {
     const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    if (!data[guildId].users[userId]) data[guildId].users[userId] = { streak: 0, lastMeow: null };
-    return data[guildId].users[userId];
+    const guildData = ensureGuildData(data, guildId);
+    return ensureUserData(guildData, userId);
 }
 
 function updateStreak(guildId, userId) {
     const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    if (!data[guildId].users[userId]) data[guildId].users[userId] = { streak: 0, lastMeow: null };
+    const guildData = ensureGuildData(data, guildId);
+    const userData = ensureUserData(guildData, userId);
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const lastMeow = data[guildId].users[userId].lastMeow;
+    const lastMeow = userData.lastMeow;
 
     let newStreak;
     let message;
@@ -50,10 +69,10 @@ function updateStreak(guildId, userId) {
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         if (lastMeow === yesterdayStr) {
-            newStreak = data[guildId].users[userId].streak + 1;
+            newStreak = userData.streak + 1;
             message = `Streak increased! 🔥`;
         } else if (lastMeow === today) {
-            newStreak = data[guildId].users[userId].streak;
+            newStreak = userData.streak;
             message = `You've already meowed today! Your streak is safe. 🐱`;
         } else {
             newStreak = 1;
@@ -61,8 +80,8 @@ function updateStreak(guildId, userId) {
         }
     }
 
-    data[guildId].users[userId].streak = newStreak;
-    data[guildId].users[userId].lastMeow = today;
+    userData.streak = newStreak;
+    userData.lastMeow = today;
 
     saveStreaks(data);
     return { streak: newStreak, message };
@@ -74,9 +93,9 @@ function getStreak(guildId, userId) {
 
 function getTopStreaks(guildId, limit = 10) {
     const data = loadStreaks();
-    if (!data[guildId] || !data[guildId].users) return [];
+    const guildData = ensureGuildData(data, guildId);
 
-    return Object.entries(data[guildId].users)
+    return Object.entries(guildData.users)
         .sort(([, a], [, b]) => b.streak - a.streak)
         .slice(0, limit)
         .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
@@ -84,14 +103,14 @@ function getTopStreaks(guildId, limit = 10) {
 
 function getGuildConfig(guildId) {
     const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    return data[guildId].config;
+    const guildData = ensureGuildData(data, guildId);
+    return guildData.config;
 }
 
 function setStreakChannel(guildId, channelId) {
     const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    data[guildId].config.streakChannel = channelId;
+    const guildData = ensureGuildData(data, guildId);
+    guildData.config.streakChannel = channelId;
     saveStreaks(data);
 }
 
