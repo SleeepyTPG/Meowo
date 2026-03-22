@@ -8,7 +8,7 @@ module.exports = {
 
     async execute(interaction) {
         const guild = interaction.guild;
-        const topUsers = getTopUsers(guild.id, 10);
+        const topUsers = await getTopUsers(guild.id, 10);
 
         if (topUsers.length === 0) {
             return await interaction.reply({ content: 'No meow levels yet! Start chatting to earn XP.', ephemeral: true });

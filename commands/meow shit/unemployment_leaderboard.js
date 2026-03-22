@@ -8,7 +8,7 @@ module.exports = {
 
     async execute(interaction) {
         const guild = interaction.guild;
-        const topUsers = getTopUnemployed(guild.id, 10);
+        const topUsers = await getTopUnemployed(guild.id, 10);
 
         if (topUsers.length === 0) {
             return await interaction.reply({ content: 'No unemployment data yet! Start wasting time in voice channels! 🛋️', ephemeral: true });
@@ -33,7 +33,7 @@ module.exports = {
             try {
                 const member = await interaction.guild.members.fetch(user.id);
                 name = member.displayName;
-            } catch (error) {
+            } catch {
                 name = 'Unknown User';
             }
             const prefix = medals[user.rank - 1] ?? `**#${user.rank}**`;

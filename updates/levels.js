@@ -1,63 +1,59 @@
-const fs = require('fs');
-const path = require('path');
+'use strict';
 
-const levelsPath = path.join(__dirname, 'levels.json');
+const { pool } = require('../utils/database');
 
-function loadLevels() {
-    if (fs.existsSync(levelsPath)) {
-        try {
-            return JSON.parse(fs.readFileSync(levelsPath, 'utf8'));
-        } catch (error) {
-            console.error('Error loading levels.json:', error);
-            return {};
-        }
-    }
-    return {};
+// Ensure a row exists for this guild/user before any read-modify-write
+async function ensureUser(guildId, userId) {
+    await pool.execute(
+        'INSERT IGNORE INTO users (guild_id, user_id) VALUES (?, ?)',
+        [guildId, userId],
+    );
 }
 
-function saveLevels(data) {
-    try {
-        fs.writeFileSync(levelsPath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error saving levels.json:', error);
-    }
+async function getUserData(guildId, userId) {
+    await ensureUser(guildId, userId);
+    const [rows] = await pool.execute(
+        'SELECT xp, level FROM users WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+    return rows[0] ?? { xp: 0, level: 0 };
 }
 
-function getUserData(guildId, userId) {
-    const data = loadLevels();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { xp: 0, level: 0, lastMessage: 0 };
-    return data[guildId][userId];
+async function addXP(guildId, userId, amount) {
+    await ensureUser(guildId, userId);
+    const [rows] = await pool.execute(
+        'SELECT xp FROM users WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+    const newXP = (rows[0]?.xp ?? 0) + amount;
+    const newLevel = Math.floor(newXP / 1000);
+    await pool.execute(
+        'UPDATE users SET xp = ?, level = ? WHERE guild_id = ? AND user_id = ?',
+        [newXP, newLevel, guildId, userId],
+    );
+    return { xp: newXP, level: newLevel };
 }
 
-function addXP(guildId, userId, amount) {
-    const data = loadLevels();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { xp: 0, level: 0, lastMessage: 0 };
-
-    data[guildId][userId].xp += amount;
-    data[guildId][userId].level = Math.floor(data[guildId][userId].xp / 1000);
-
-    saveLevels(data);
-    return data[guildId][userId];
-}
-
-function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
-    const data = loadLevels();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { xp: 0, level: 0, lastMessage: 0 };
-
+async function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
+    await ensureUser(guildId, userId);
     const now = Date.now();
-    if (now - data[guildId][userId].lastMessage < cooldownMs) {
+    const [rows] = await pool.execute(
+        'SELECT xp, level, last_message FROM users WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+    const user = rows[0] ?? { xp: 0, level: 0, last_message: 0 };
+
+    if (now - Number(user.last_message) < cooldownMs) {
         return false; // Cooldown active
     }
 
-    data[guildId][userId].xp += amount;
-    data[guildId][userId].level = Math.floor(data[guildId][userId].xp / 1000);
-    data[guildId][userId].lastMessage = now;
-
-    saveLevels(data);
-    return data[guildId][userId];
+    const newXP = user.xp + amount;
+    const newLevel = Math.floor(newXP / 1000);
+    await pool.execute(
+        'UPDATE users SET xp = ?, level = ?, last_message = ? WHERE guild_id = ? AND user_id = ?',
+        [newXP, newLevel, now, guildId, userId],
+    );
+    return { xp: newXP, level: newLevel, lastMessage: now };
 }
 
 function getLevel(xp) {
@@ -68,36 +64,34 @@ function getXPForNextLevel(level) {
     return (level + 1) * 1000;
 }
 
-function getRank(guildId, userId) {
-    const data = loadLevels();
-    if (!data[guildId]) return null;
-
-    const users = Object.entries(data[guildId])
-        .sort(([, a], [, b]) => b.xp - a.xp)
-        .map(([id], index) => ({ id, rank: index + 1 }));
-
-    const user = users.find(u => u.id === userId);
-    return user ? user.rank : null;
+async function getRank(guildId, userId) {
+    const [rows] = await pool.execute(
+        'SELECT user_id FROM users WHERE guild_id = ? ORDER BY xp DESC',
+        [guildId],
+    );
+    const index = rows.findIndex(r => r.user_id === userId);
+    return index === -1 ? null : index + 1;
 }
 
-function getTopUsers(guildId, limit = 10) {
-    const data = loadLevels();
-    if (!data[guildId]) return [];
-
-    return Object.entries(data[guildId])
-        .sort(([, a], [, b]) => b.xp - a.xp)
-        .slice(0, limit)
-        .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
+async function getTopUsers(guildId, limit = 10) {
+    const [rows] = await pool.execute(
+        'SELECT user_id, xp, level FROM users WHERE guild_id = ? ORDER BY xp DESC LIMIT ?',
+        [guildId, limit],
+    );
+    return rows.map((row, index) => ({
+        id: row.user_id,
+        xp: row.xp,
+        level: row.level,
+        rank: index + 1,
+    }));
 }
 
 module.exports = {
-    loadLevels,
-    saveLevels,
     getUserData,
     addXP,
     giveXPWithCooldown,
     getLevel,
     getXPForNextLevel,
     getRank,
-    getTopUsers
+    getTopUsers,
 };

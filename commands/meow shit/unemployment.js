@@ -14,8 +14,8 @@ module.exports = {
         const targetUser = interaction.options.getUser('user') || interaction.user;
         const guild = interaction.guild;
 
-        const totalTime = getTotalTime(guild.id, targetUser.id);
-        const userData = getUserUnemploymentData(guild.id, targetUser.id);
+        const totalTime = await getTotalTime(guild.id, targetUser.id);
+        const userData = await getUserUnemploymentData(guild.id, targetUser.id);
         const isCurrentlyInVC = userData.joinedAt !== null;
 
         const hours = totalTime / (1000 * 60 * 60);

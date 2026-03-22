@@ -12,20 +12,20 @@ const {
 
 module.exports = {
     name: 'messageCreate',
-    execute(message) {
+    async execute(message) {
         if (message.author.bot) return;
 
         if (!message.guild) return;
 
         const xpAmount = Math.floor(Math.random() * 11) + 5; // 5-15
-        giveXPWithCooldown(message.guild.id, message.author.id, xpAmount, 60000);
+        await giveXPWithCooldown(message.guild.id, message.author.id, xpAmount, 60000);
 
-        const config = getGuildConfig(message.guild.id);
+        const config = await getGuildConfig(message.guild.id);
         if (config.streakChannel && message.channel.id === config.streakChannel && message.content.toLowerCase().includes('meow')) {
             const user = message.author;
             const guild = message.guild;
 
-            const result = updateStreak(guild.id, user.id);
+            const result = await updateStreak(guild.id, user.id);
             const currentStreak = result.streak;
             const streakMessage = result.message;
 

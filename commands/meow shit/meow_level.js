@@ -16,7 +16,7 @@ module.exports = {
     async execute(interaction) {
         const user = interaction.user;
         const guild = interaction.guild;
-        const userData = getUserData(guild.id, user.id);
+        const userData = await getUserData(guild.id, user.id);
 
         const currentLevel = userData.level;
         const currentXP = userData.xp;
