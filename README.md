@@ -4,7 +4,7 @@
 
 **A cozy Discord bot with moderation tools and cat-themed social features.**
 
-![Discord.js](https://img.shields.io/badge/discord.js-v14-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+![Discord.js](https://img.shields.io/badge/discord.js-v24-5865F2?style=for-the-badge&logo=discord&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-v16+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![License](https://img.shields.io/badge/license-APGL-blue?style=for-the-badge)
 
