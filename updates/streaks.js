@@ -1,107 +1,109 @@
-const fs = require('fs');
-const path = require('path');
+'use strict';
 
-const streaksPath = path.join(__dirname, 'streaks.json');
+const { pool } = require('../utils/database');
 
-function loadStreaks() {
-    if (fs.existsSync(streaksPath)) {
-        try {
-            return JSON.parse(fs.readFileSync(streaksPath, 'utf8'));
-        } catch (error) {
-            console.error('Error loading streaks.json:', error);
-            return {};
-        }
-    }
-    return {};
+// Returns today's date as a YYYY-MM-DD string in UTC
+function getTodayString() {
+    return new Date().toISOString().split('T')[0];
 }
 
-function saveStreaks(data) {
-    try {
-        fs.writeFileSync(streaksPath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error saving streaks.json:', error);
-    }
+// Normalise a DATE value returned by mysql2 (may be a Date object or a string)
+function toDateString(value) {
+    return value instanceof Date ? value.toISOString().split('T')[0] : String(value);
 }
 
-function getUserStreakData(guildId, userId) {
-    const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    if (!data[guildId].users[userId]) data[guildId].users[userId] = { streak: 0, lastMeow: null };
-    return data[guildId].users[userId];
+async function getUserStreakData(guildId, userId) {
+    const [rows] = await pool.execute(
+        'SELECT streak_count, last_date FROM streaks WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+    if (!rows[0]) return { streak: 0, lastMeow: null };
+    const lastMeow = rows[0].last_date ? toDateString(rows[0].last_date) : null;
+    return { streak: rows[0].streak_count, lastMeow };
 }
 
-function updateStreak(guildId, userId) {
-    const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    if (!data[guildId].users[userId]) data[guildId].users[userId] = { streak: 0, lastMeow: null };
+async function updateStreak(guildId, userId) {
+    const today = getTodayString();
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const lastMeow = data[guildId].users[userId].lastMeow;
+    const [rows] = await pool.execute(
+        'SELECT streak_count, last_date FROM streaks WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
 
     let newStreak;
     let message;
+    const row = rows[0];
 
-    if (!lastMeow) {
+    if (!row || !row.last_date) {
         newStreak = 1;
-        message = "Welcome to your meow streak! 🐱";
+        message = 'Welcome to your meow streak! 🐱';
     } else {
+        const lastDateStr = toDateString(row.last_date);
+
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-        if (lastMeow === yesterdayStr) {
-            newStreak = data[guildId].users[userId].streak + 1;
-            message = `Streak increased! 🔥`;
-        } else if (lastMeow === today) {
-            newStreak = data[guildId].users[userId].streak;
-            message = `You've already meowed today! Your streak is safe. 🐱`;
+        if (lastDateStr === yesterdayStr) {
+            newStreak = row.streak_count + 1;
+            message = 'Streak increased! 🔥';
+        } else if (lastDateStr === today) {
+            newStreak = row.streak_count;
+            message = "You've already meowed today! Your streak is safe. 🐱";
         } else {
             newStreak = 1;
-            message = `Streak reset! 😿 Don't worry, start fresh today!`;
+            message = "Streak reset! 😿 Don't worry, start fresh today!";
         }
     }
 
-    data[guildId].users[userId].streak = newStreak;
-    data[guildId].users[userId].lastMeow = today;
+    await pool.execute(
+        `INSERT INTO streaks (guild_id, user_id, streak_count, last_date)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE streak_count = ?, last_date = ?`,
+        [guildId, userId, newStreak, today, newStreak, today],
+    );
 
-    saveStreaks(data);
     return { streak: newStreak, message };
 }
 
-function getStreak(guildId, userId) {
-    return getUserStreakData(guildId, userId).streak;
+async function getStreak(guildId, userId) {
+    const data = await getUserStreakData(guildId, userId);
+    return data.streak;
 }
 
-function getTopStreaks(guildId, limit = 10) {
-    const data = loadStreaks();
-    if (!data[guildId] || !data[guildId].users) return [];
-
-    return Object.entries(data[guildId].users)
-        .sort(([, a], [, b]) => b.streak - a.streak)
-        .slice(0, limit)
-        .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
+async function getTopStreaks(guildId, limit = 10) {
+    const [rows] = await pool.execute(
+        'SELECT user_id, streak_count FROM streaks WHERE guild_id = ? ORDER BY streak_count DESC LIMIT ?',
+        [guildId, limit],
+    );
+    return rows.map((row, index) => ({
+        id: row.user_id,
+        streak: row.streak_count,
+        rank: index + 1,
+    }));
 }
 
-function getGuildConfig(guildId) {
-    const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    return data[guildId].config;
+async function getGuildConfig(guildId) {
+    const [rows] = await pool.execute(
+        'SELECT meow_channel_id FROM guilds WHERE guild_id = ?',
+        [guildId],
+    );
+    return rows[0] ? { streakChannel: rows[0].meow_channel_id } : { streakChannel: null };
 }
 
-function setStreakChannel(guildId, channelId) {
-    const data = loadStreaks();
-    if (!data[guildId]) data[guildId] = { config: { streakChannel: null }, users: {} };
-    data[guildId].config.streakChannel = channelId;
-    saveStreaks(data);
+async function setStreakChannel(guildId, channelId) {
+    await pool.execute(
+        `INSERT INTO guilds (guild_id, meow_channel_id) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE meow_channel_id = ?`,
+        [guildId, channelId, channelId],
+    );
 }
 
 module.exports = {
-    loadStreaks,
-    saveStreaks,
     getUserStreakData,
     updateStreak,
     getStreak,
     getTopStreaks,
     getGuildConfig,
-    setStreakChannel
+    setStreakChannel,
 };

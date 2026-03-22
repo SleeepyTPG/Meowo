@@ -14,8 +14,8 @@ module.exports = {
         const targetUser = interaction.options.getUser('user') || interaction.user;
         const guild = interaction.guild;
 
-        const streak = getStreak(guild.id, targetUser.id);
-        const userData = getUserStreakData(guild.id, targetUser.id);
+        const streak = await getStreak(guild.id, targetUser.id);
+        const userData = await getUserStreakData(guild.id, targetUser.id);
         const lastMeow = userData.lastMeow;
 
         const container = new ContainerBuilder()
@@ -23,7 +23,7 @@ module.exports = {
             .addSectionComponents(
                 new SectionBuilder()
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`## 🐱 ${targetUser.displayName}'s Meow Streak 🔥`)
+                        new TextDisplayBuilder().setContent(`## 🐱 ${targetUser.displayName}'s Meow Streak ��`)
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(

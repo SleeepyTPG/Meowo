@@ -26,7 +26,7 @@ module.exports = {
     async execute(interaction) {
         const channel = interaction.options.getChannel('channel', true);
 
-        setStreakChannel(interaction.guild.id, channel.id);
+        await setStreakChannel(interaction.guild.id, channel.id);
 
         const container = new ContainerBuilder()
             .setAccentColor(0xFFB6C1)

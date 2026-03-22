@@ -1,63 +1,79 @@
-const fs = require('fs');
-const path = require('path');
+'use strict';
 
-const unemploymentPath = path.join(__dirname, 'unemployment.json');
+const { pool } = require('../utils/database');
 
-function loadUnemployment() {
-    if (fs.existsSync(unemploymentPath)) {
-        try {
-            return JSON.parse(fs.readFileSync(unemploymentPath, 'utf8'));
-        } catch (error) {
-            console.error('Error loading unemployment.json:', error);
-            return {};
-        }
-    }
-    return {};
+const MS_PER_HOUR = 1000 * 60 * 60;
+
+// Ensure a row exists for this guild/user before any read-modify-write
+async function ensureUser(guildId, userId) {
+    await pool.execute(
+        'INSERT IGNORE INTO users (guild_id, user_id) VALUES (?, ?)',
+        [guildId, userId],
+    );
 }
 
-function saveUnemployment(data) {
+async function getUserUnemploymentData(guildId, userId) {
+    await ensureUser(guildId, userId);
+    const [rows] = await pool.execute(
+        'SELECT voice_minutes, voice_join_time, sent_milestones FROM users WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+    if (!rows[0]) return { totalTime: 0, joinedAt: null, sentMilestones: [] };
+
+    let sentMilestones;
     try {
-        fs.writeFileSync(unemploymentPath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error saving unemployment.json:', error);
+        sentMilestones = JSON.parse(rows[0].sent_milestones || '[]');
+    } catch {
+        sentMilestones = [];
     }
+
+    return {
+        totalTime: Number(rows[0].voice_minutes),
+        joinedAt: rows[0].voice_join_time ? Number(rows[0].voice_join_time) : null,
+        sentMilestones,
+    };
 }
 
-function getUserUnemploymentData(guildId, userId) {
-    const data = loadUnemployment();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { totalTime: 0, joinedAt: null, sentMilestones: [] };
-    return data[guildId][userId];
+async function setUserJoined(guildId, userId, timestamp) {
+    await ensureUser(guildId, userId);
+    await pool.execute(
+        'UPDATE users SET voice_join_time = ? WHERE guild_id = ? AND user_id = ?',
+        [timestamp, guildId, userId],
+    );
 }
 
-function setUserJoined(guildId, userId, timestamp) {
-    const data = loadUnemployment();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { totalTime: 0, joinedAt: null, sentMilestones: [] };
-    data[guildId][userId].joinedAt = timestamp;
-    saveUnemployment(data);
+async function addTimeToUser(guildId, userId, timeMs) {
+    await ensureUser(guildId, userId);
+    const [rows] = await pool.execute(
+        'SELECT voice_minutes, sent_milestones FROM users WHERE guild_id = ? AND user_id = ?',
+        [guildId, userId],
+    );
+
+    const current = rows[0] ?? { voice_minutes: 0, sent_milestones: '[]' };
+    let sentMilestones;
+    try {
+        sentMilestones = JSON.parse(current.sent_milestones || '[]');
+    } catch {
+        sentMilestones = [];
+    }
+
+    const newTotal = Number(current.voice_minutes) + timeMs;
+    const totalHours = newTotal / MS_PER_HOUR;
+    const milestones = [1, 5, 10, 24, 50, 100, 250, 500, 1000];
+    const newMilestones = milestones.filter(m => totalHours >= m && !sentMilestones.includes(m));
+    sentMilestones.push(...newMilestones);
+
+    await pool.execute(
+        'UPDATE users SET voice_minutes = ?, voice_join_time = NULL, sent_milestones = ? WHERE guild_id = ? AND user_id = ?',
+        [newTotal, JSON.stringify(sentMilestones), guildId, userId],
+    );
+
+    return { totalTime: newTotal, newMilestones };
 }
 
-function addTimeToUser(guildId, userId, timeMs) {
-    const data = loadUnemployment();
-    if (!data[guildId]) data[guildId] = {};
-    if (!data[guildId][userId]) data[guildId][userId] = { totalTime: 0, joinedAt: null, sentMilestones: [] };
-
-    data[guildId][userId].totalTime += timeMs;
-    data[guildId][userId].joinedAt = null; // Reset join time
-
-    const totalHours = data[guildId][userId].totalTime / (1000 * 60 * 60);
-    const milestones = [1, 5, 10, 24, 50, 100, 250, 500, 1000]; // Hours
-    const newMilestones = milestones.filter(m => totalHours >= m && !data[guildId][userId].sentMilestones.includes(m));
-
-    data[guildId][userId].sentMilestones.push(...newMilestones);
-
-    saveUnemployment(data);
-    return { totalTime: data[guildId][userId].totalTime, newMilestones };
-}
-
-function getTotalTime(guildId, userId) {
-    return getUserUnemploymentData(guildId, userId).totalTime;
+async function getTotalTime(guildId, userId) {
+    const data = await getUserUnemploymentData(guildId, userId);
+    return data.totalTime;
 }
 
 function formatTime(ms) {
@@ -66,32 +82,28 @@ function formatTime(ms) {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
 
-    if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`;
-    } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s`;
-    } else {
-        return `${seconds}s`;
-    }
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
 }
 
-function getTopUnemployed(guildId, limit = 10) {
-    const data = loadUnemployment();
-    if (!data[guildId]) return [];
-
-    return Object.entries(data[guildId])
-        .sort(([, a], [, b]) => b.totalTime - a.totalTime)
-        .slice(0, limit)
-        .map(([id, stats], index) => ({ id, ...stats, rank: index + 1 }));
+async function getTopUnemployed(guildId, limit = 10) {
+    const [rows] = await pool.execute(
+        'SELECT user_id, voice_minutes FROM users WHERE guild_id = ? ORDER BY voice_minutes DESC LIMIT ?',
+        [guildId, limit],
+    );
+    return rows.map((row, index) => ({
+        id: row.user_id,
+        totalTime: Number(row.voice_minutes),
+        rank: index + 1,
+    }));
 }
 
 module.exports = {
-    loadUnemployment,
-    saveUnemployment,
     getUserUnemploymentData,
     setUserJoined,
     addTimeToUser,
     getTotalTime,
     formatTime,
-    getTopUnemployed
+    getTopUnemployed,
 };

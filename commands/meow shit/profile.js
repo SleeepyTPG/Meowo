@@ -20,7 +20,7 @@ module.exports = {
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user') || interaction.user;
         const guild = interaction.guild;
-        const userData = getUserData(guild.id, targetUser.id);
+        const userData = await getUserData(guild.id, targetUser.id);
 
         const currentLevel = userData.level;
         const currentXP = userData.xp;
@@ -28,7 +28,7 @@ module.exports = {
         const xpNeeded = xpForNext - currentXP;
         const progress = currentXP - (currentLevel * 1000);
         const progressMax = 1000;
-        const rank = getRank(guild.id, targetUser.id);
+        const rank = await getRank(guild.id, targetUser.id);
 
         const container = new ContainerBuilder()
             .setAccentColor(0xFFB6C1)

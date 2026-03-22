@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, Collection, ActivityType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { initTables } = require('./utils/database');
 
 const client = new Client({
     intents: [
@@ -66,6 +67,13 @@ loadEvents(path.join(__dirname, 'events'));
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+
+    // Initialise MySQL tables before anything else touches the DB
+    try {
+        await initTables();
+    } catch (error) {
+        console.error('Failed to initialise database tables:', error);
+    }
 
     let totalUsers = 0;
     for (const guild of client.guilds.cache.values()) {
