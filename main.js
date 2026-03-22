@@ -100,16 +100,35 @@ client.once('ready', async () => {
     });
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+    const guildId = process.env.GUILD_ID;
 
     try {
-        console.log('Started refreshing application (/) commands.');
+        if (guildId) {
+            console.log(`Started refreshing guild (/) commands for guild ${guildId}.`);
 
-        await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: commands },
-        );
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                { body: commands },
+            );
 
-        console.log('Successfully reloaded application (/) commands.');
+            console.log('Successfully reloaded guild (/) commands.');
+            console.log('Clearing global application commands to prevent duplicate entries...');
+            await rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: [] },
+            );
+            console.log('Successfully cleared global application commands.');
+        } else {
+            console.log('Started refreshing global application (/) commands.');
+
+            await rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: commands },
+            );
+
+            console.log('Successfully reloaded global application (/) commands.');
+            console.log('Global command propagation can take up to an hour. Set GUILD_ID in .env for instant server updates.');
+        }
     } catch (error) {
         console.error(error);
     }
