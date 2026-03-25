@@ -29,6 +29,8 @@ module.exports = {
             const currentStreak = result.streak;
             const streakMessage = result.message;
 
+            if (!streakMessage.includes('already meowed today')) {
+
             let milestoneText = '';
             if (currentStreak === 1) {
                 milestoneText = '🎉 First meow of your streak!';
@@ -77,7 +79,11 @@ module.exports = {
                     new TextDisplayBuilder().setContent(`-# Meow streaks reset if you miss a day 😿\n-# ${new Date().toLocaleString()}`)
                 );
 
-            message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 });
+            const sentMessage = await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 });
+            setTimeout(() => {
+                sentMessage.delete().catch(() => {});
+            }, 8000);
+            }
         }
     },
 };
