@@ -1,15 +1,18 @@
 'use strict';
 
 const { pool } = require('../utils/database');
+const { getBerlinDateString, getBerlinYesterdayString, formatBerlinDateForDisplay } = require('../utils/dates');
 
-// Returns today's date as a YYYY-MM-DD string in UTC
+// Back-compat wrappers (internal use only; prefer direct date helpers)
 function getTodayString() {
-    return new Date().toISOString().split('T')[0];
+    return getBerlinDateString();
 }
 
-// Normalise a DATE value returned by mysql2 (may be a Date object or a string)
 function toDateString(value) {
-    return value instanceof Date ? value.toISOString().split('T')[0] : String(value);
+    if (value instanceof Date) {
+        return getBerlinDateString(value);
+    }
+    return String(value);
 }
 
 async function getUserStreakData(guildId, userId) {
@@ -39,10 +42,7 @@ async function updateStreak(guildId, userId) {
         message = 'Welcome to your meow streak! 🐱';
     } else {
         const lastDateStr = toDateString(row.last_date);
-
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = getBerlinYesterdayString();
 
         if (lastDateStr === yesterdayStr) {
             newStreak = row.streak_count + 1;

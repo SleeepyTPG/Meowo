@@ -5,12 +5,16 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('unemployment')
         .setDescription('Check your total time spent being unproductive in voice channels')
+        .setDMPermission(false)
         .addUserOption(option =>
             option.setName('user')
                 .setDescription('The user to check (defaults to yourself)')
                 .setRequired(false)),
 
     async execute(interaction) {
+        if (!interaction.guild) {
+            return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        }
         const targetUser = interaction.options.getUser('user') || interaction.user;
         const guild = interaction.guild;
 

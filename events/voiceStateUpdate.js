@@ -1,12 +1,12 @@
-const { setUserJoined, addTimeToUser, getUserUnemploymentData } = require('../updates/unemployment');
+const { setUserJoined, addTimeToUser, getUserUnemploymentData, formatTime } = require('../updates/unemployment');
 
 module.exports = {
     name: 'voiceStateUpdate',
     async execute(oldState, newState) {
-        const user = newState.member.user;
-        if (user.bot) return;
+        const guild = newState.guild || oldState.guild;
+        if (!guild || !newState.member || newState.member.user.bot) return;
 
-        const guild = newState.guild;
+        const user = newState.member.user;
         const oldChannel = oldState.channel;
         const newChannel = newState.channel;
 
@@ -20,7 +20,7 @@ module.exports = {
                 const timeSpent = Date.now() - userData.joinedAt;
                 const result = await addTimeToUser(guild.id, user.id, timeSpent);
                 if (result.newMilestones.length > 0) {
-                    sendMilestoneDM(user, result.newMilestones, result.totalTime);
+                    await sendMilestoneDM(user, result.newMilestones, result.totalTime).catch(() => {});
                 }
             }
         } else if (oldChannel && newChannel && oldChannel.id !== newChannel.id) {
@@ -30,7 +30,7 @@ module.exports = {
                 const timeSpent = Date.now() - userData.joinedAt;
                 const result = await addTimeToUser(guild.id, user.id, timeSpent);
                 if (result.newMilestones.length > 0) {
-                    sendMilestoneDM(user, result.newMilestones, result.totalTime);
+                    await sendMilestoneDM(user, result.newMilestones, result.totalTime).catch(() => {});
                 }
             }
             await setUserJoined(guild.id, user.id, Date.now());
@@ -39,8 +39,6 @@ module.exports = {
 };
 
 async function sendMilestoneDM(user, milestones, totalTime) {
-    const { formatTime } = require('../updates/unemployment');
-
     for (const milestone of milestones) {
         const embed = {
             color: 0xFF69B4,

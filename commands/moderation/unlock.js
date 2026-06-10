@@ -2,28 +2,14 @@ const {
     SlashCommandBuilder,
     PermissionFlagsBits,
     ChannelType,
-    ContainerBuilder,
-    TextDisplayBuilder,
-    SeparatorBuilder,
-    SeparatorSpacingSize,
-    MessageFlags,
 } = require('discord.js');
-
-function createNotice(title, body, footer, accentColor = 0xFFB6C1) {
-    return new ContainerBuilder()
-        .setAccentColor(accentColor)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(title))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
-        .addSeparatorComponents(
-            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true),
-        )
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(footer));
-}
+const { createNotice } = require('../../utils/components');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('unlock')
         .setDescription('Unlock a channel and allow messages again')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
         .addChannelOption(option =>
             option
@@ -41,6 +27,9 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        if (!interaction.guild) {
+            return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        }
         const channel = interaction.options.getChannel('channel') || interaction.channel;
         const reason = interaction.options.getString('reason') || 'No reason provided';
         const everyoneRoleId = interaction.guild.id;

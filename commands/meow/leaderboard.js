@@ -4,9 +4,13 @@ const { getTopUsers } = require('../../updates/levels');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leaderboard')
-        .setDescription('View the top meow levels in the server'),
+        .setDescription('View the top meow levels in the server')
+        .setDMPermission(false),
 
     async execute(interaction) {
+        if (!interaction.guild) {
+            return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        }
         const guild = interaction.guild;
         const topUsers = await getTopUsers(guild.id, 10);
 
@@ -28,14 +32,19 @@ module.exports = {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
             );
 
-        for (const user of topUsers) {
-            const member = await interaction.guild.members.fetch(user.id).catch(() => null);
-            const name = member ? member.displayName : 'Unknown User';
-            const prefix = medals[user.rank - 1] ?? `**#${user.rank}**`;
+        const entries = await Promise.all(
+            topUsers.map(async (user) => {
+                const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+                const name = member ? member.displayName : 'Unknown User';
+                const prefix = medals[user.rank - 1] ?? `**#${user.rank}**`;
+                return { prefix, name, level: user.level, xp: user.xp, rank: user.rank };
+            })
+        );
+        for (const e of entries) {
             container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`${prefix} ${name} — Level ${user.level} (${user.xp} XP)`)
+                new TextDisplayBuilder().setContent(`${e.prefix} ${e.name} — Level ${e.level} (${e.xp} XP)`)
             );
-            if (user.rank < topUsers.length) {
+            if (e.rank < topUsers.length) {
                 container.addSeparatorComponents(
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false)
                 );

@@ -1,5 +1,6 @@
 const { giveXPWithCooldown } = require('../updates/levels');
 const { updateStreak, getGuildConfig } = require('../updates/streaks');
+const { getBerlinDateString } = require('../utils/dates');
 const {
     ContainerBuilder,
     SectionBuilder,
@@ -17,7 +18,7 @@ module.exports = {
 
         if (!message.guild) return;
 
-        const xpAmount = Math.floor(Math.random() * 11) + 5; // 5-15
+        const xpAmount = Math.floor(Math.random() * 11) + 5;
         await giveXPWithCooldown(message.guild.id, message.author.id, xpAmount, 60000);
 
         const config = await getGuildConfig(message.guild.id);
@@ -29,7 +30,10 @@ module.exports = {
             const currentStreak = result.streak;
             const streakMessage = result.message;
 
-            if (!streakMessage.includes('already meowed today')) {
+            // Skip showing the message if they already meowed today
+            if (streakMessage.includes('already meowed today')) {
+                return;
+            }
 
             let milestoneText = '';
             if (currentStreak === 1) {
@@ -76,14 +80,13 @@ module.exports = {
                     new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true)
                 )
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`-# Meow streaks reset if you miss a day 😿\n-# ${new Date().toLocaleString()}`)
+                    new TextDisplayBuilder().setContent(`-# Meow streaks reset if you miss a day 😿\n-# ${getBerlinDateString()} (Berlin time)`)
                 );
 
             const sentMessage = await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 });
             setTimeout(() => {
                 sentMessage.delete().catch(() => {});
             }, 8000);
-            }
         }
     },
 };

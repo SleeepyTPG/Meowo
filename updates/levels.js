@@ -19,21 +19,6 @@ async function getUserData(guildId, userId) {
     return rows[0] ?? { xp: 0, level: 0 };
 }
 
-async function addXP(guildId, userId, amount) {
-    await ensureUser(guildId, userId);
-    const [rows] = await pool.execute(
-        'SELECT xp FROM users WHERE guild_id = ? AND user_id = ?',
-        [guildId, userId],
-    );
-    const newXP = (rows[0]?.xp ?? 0) + amount;
-    const newLevel = Math.floor(newXP / 1000);
-    await pool.execute(
-        'UPDATE users SET xp = ?, level = ? WHERE guild_id = ? AND user_id = ?',
-        [newXP, newLevel, guildId, userId],
-    );
-    return { xp: newXP, level: newLevel };
-}
-
 async function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
     await ensureUser(guildId, userId);
     const now = Date.now();
@@ -54,10 +39,6 @@ async function giveXPWithCooldown(guildId, userId, amount, cooldownMs = 60000) {
         [newXP, newLevel, now, guildId, userId],
     );
     return { xp: newXP, level: newLevel, lastMessage: now };
-}
-
-function getLevel(xp) {
-    return Math.floor(xp / 1000);
 }
 
 function getXPForNextLevel(level) {
@@ -88,9 +69,7 @@ async function getTopUsers(guildId, limit = 10) {
 
 module.exports = {
     getUserData,
-    addXP,
     giveXPWithCooldown,
-    getLevel,
     getXPForNextLevel,
     getRank,
     getTopUsers,

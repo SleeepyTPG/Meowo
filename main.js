@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, REST, Routes, Collection, ActivityType } = re
 const fs = require('fs');
 const path = require('path');
 const { initTables } = require('./utils/database');
+const { reconcileVoiceSessions } = require('./updates/unemployment');
 
 const client = new Client({
     intents: [
@@ -15,6 +16,13 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+
+// Global listeners for robustness (log, prevent silent crashes)
+client.on('error', (e) => console.error('Discord client error:', e));
+client.on('warn', (w) => console.warn('Discord client warning:', w));
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection:', reason);
+});
 
 function loadCommands(dir) {
     const files = fs.readdirSync(dir, { withFileTypes: true });
@@ -73,6 +81,15 @@ client.once('ready', async () => {
         await initTables();
     } catch (error) {
         console.error('Failed to initialise database tables:', error);
+        // Fail fast — bot is useless without its data layer
+        process.exit(1);
+    }
+
+    // Reconcile voice sessions early so unemployment tracking is accurate even after restarts/downtime
+    try {
+        await reconcileVoiceSessions(client);
+    } catch (error) {
+        console.error('Voice reconcile failed (non-fatal):', error);
     }
 
     let totalUsers = 0;
@@ -144,8 +161,23 @@ client.on('interactionCreate', async interaction => {
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error(error);
-        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        console.error('Command execution error:', error);
+        // Avoid "already replied" errors — use appropriate follow-up path
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({
+                    content: 'There was an error while executing this command!',
+                    ephemeral: true,
+                });
+            } else {
+                await interaction.reply({
+                    content: 'There was an error while executing this command!',
+                    ephemeral: true,
+                });
+            }
+        } catch (replyErr) {
+            console.error('Failed to send error reply:', replyErr);
+        }
     }
 });
 
