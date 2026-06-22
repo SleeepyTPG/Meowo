@@ -28,3 +28,4 @@ replay_pid*
 .env.local
 .env.development
 node_modules/
+.drawio/
