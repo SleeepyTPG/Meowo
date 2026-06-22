@@ -73,6 +73,13 @@ function loadEvents(dir) {
 loadCommands(path.join(__dirname, 'commands'));
 loadEvents(path.join(__dirname, 'events'));
 
+// Build command data once and expose on client so guildCreate (and future code) can use it
+const commandData = [];
+client.commands.forEach(command => {
+    commandData.push(command.data.toJSON());
+});
+client.commandData = commandData;
+
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
@@ -111,43 +118,51 @@ client.once('ready', async () => {
     });
     console.log(`Set presence: Listening to "🐱 Purring for ${totalUsers} cats! 🐾"`);
 
-    const commands = [];
-    client.commands.forEach(command => {
-        commands.push(command.data.toJSON());
-    });
-
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    const guildId = process.env.GUILD_ID;
+    const rawGuildId = process.env.GUILD_ID;
+    const devGuildId = rawGuildId && rawGuildId.trim() ? rawGuildId.trim() : null;
 
+    // Always register global commands → commands work in every server the bot is in
     try {
-        if (guildId) {
-            console.log(`Started refreshing guild (/) commands for guild ${guildId}.`);
-
-            await rest.put(
-                Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
-                { body: commands },
-            );
-
-            console.log('Successfully reloaded guild (/) commands.');
-            console.log('Clearing global application commands to prevent duplicate entries...');
-            await rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
-                { body: [] },
-            );
-            console.log('Successfully cleared global application commands.');
-        } else {
-            console.log('Started refreshing global application (/) commands.');
-
-            await rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
-                { body: commands },
-            );
-
-            console.log('Successfully reloaded global application (/) commands.');
-            console.log('Global command propagation can take up to an hour. Set GUILD_ID in .env for instant server updates.');
-        }
+        console.log('Started refreshing global application (/) commands.');
+        await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: client.commandData },
+        );
+        console.log('Successfully reloaded global application (/) commands.');
     } catch (error) {
-        console.error(error);
+        console.error('Failed to register global commands:', error);
+    }
+
+    // Register guild commands for all current guilds so commands appear instantly (no global cache delay)
+    let registeredGuilds = 0;
+    for (const guild of client.guilds.cache.values()) {
+        try {
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.CLIENT_ID, guild.id),
+                { body: client.commandData },
+            );
+            registeredGuilds++;
+        } catch (error) {
+            console.error(`Failed to register guild commands for ${guild.id}:`, error.message);
+        }
+    }
+    if (registeredGuilds > 0) {
+        console.log(`Registered guild commands instantly for ${registeredGuilds} guild(s).`);
+    }
+
+    // Optional: also register (again) to a specific dev guild — harmless and gives you the fastest feedback loop
+    if (devGuildId) {
+        try {
+            console.log(`Dev guild override: refreshing commands for ${devGuildId}.`);
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.CLIENT_ID, devGuildId),
+                { body: client.commandData },
+            );
+            console.log(`Dev guild commands refreshed for ${devGuildId}.`);
+        } catch (error) {
+            console.error(`Failed to register for dev guild ${devGuildId}:`, error);
+        }
     }
 });
 
